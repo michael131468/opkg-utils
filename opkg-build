@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # SPDX-License-Identifier: GPL-2.0-only
 : <<=cut
 =head1 NAME
@@ -12,6 +12,7 @@ opkg-build - construct an .opk from a directory
 #   Updated to work on Familiar Pre0.7rc1, with busybox tar.
 #   Note it Requires: binutils-ar (since the busybox ar can't create)
 set -e
+set -o pipefail
 
 version=1.0
 
