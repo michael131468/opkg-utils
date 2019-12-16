@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # The general algorithm this program follows goes like this:
 #   Run tar to extract control from control.tar.gz from the package.
