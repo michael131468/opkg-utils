@@ -60,22 +60,22 @@ happyPathTest()
 
 	assertExitCode "$OPKG_FEED"' add' $E_INVALID_ARG
 	assertExitCode "$OPKG_FEED"' add feedNameWithoutUri' $E_INVALID_ARG
-	assertExitCode "$OPKG_FEED"' add feedNameWith\"Double\"Quotes\" --uri https://urldefense.com/v3/__http://somehost.com/somedir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgzfoNDzRA$ ' $E_INVALID_ARG
-	assertExitCode "$OPKG_FEED"' add someFeed --uri https://urldefense.com/v3/__http://some*5C*22host*5C*22.com/somedir__;JSUlJQ!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgw4XgAKxQ$ ' $E_INVALID_ARG
-	assertExitCode "$OPKG_FEED"' add someFeed --uri https://urldefense.com/v3/__http://somehost.com/somedir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgzfoNDzRA$ ' $S_OK
-	assertExitCode "$OPKG_FEED"' add someFeed --uri https://urldefense.com/v3/__http://somehost.com/somedir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgzfoNDzRA$ ' $E_FEED_ALREADY_EXISTS
-	assertExitCode "$OPKG_FEED"' add someFeed --uri https://urldefense.com/v3/__http://someotherhost.com/someotherdir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgxMT4RvEg$  --clobber' $S_OK
-	assertExitCode "$OPKG_FEED"' add someFeed --uri https://urldefense.com/v3/__http://someotherhost.com/someotherdir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgxMT4RvEg$  --clobber --name addDoesNotAllowRename' $E_INVALID_ARG
+	assertExitCode "$OPKG_FEED"' add feedNameWith\"Double\"Quotes\" --uri http://somehost.com/somedir' $E_INVALID_ARG
+	assertExitCode "$OPKG_FEED"' add someFeed --uri http://some\"host\".com/somedir' $E_INVALID_ARG
+	assertExitCode "$OPKG_FEED"' add someFeed --uri http://somehost.com/somedir' $S_OK
+	assertExitCode "$OPKG_FEED"' add someFeed --uri http://somehost.com/somedir' $E_FEED_ALREADY_EXISTS
+	assertExitCode "$OPKG_FEED"' add someFeed --uri http://someotherhost.com/someotherdir --clobber' $S_OK
+	assertExitCode "$OPKG_FEED"' add someFeed --uri http://someotherhost.com/someotherdir --clobber --name addDoesNotAllowRename' $E_INVALID_ARG
 
 	# The addition of --conf-dir <dir> means "--conf-dir" is treated as the feed name
 	assertExitCode "$OPKG_FEED"' modify' $E_FEED_NOT_FOUND
 	assertExitCode "$OPKG_FEED"' modify missingFeed' $E_FEED_NOT_FOUND
 	assertExitCode "$OPKG_FEED"' modify missingFeed --clobber' $E_FEED_NOT_FOUND
-	assertExitCode "$OPKG_FEED"' modify missingFeed --uri https://urldefense.com/v3/__http://missinghost.com/missingdir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgxJuwE9EQ$ ' $E_FEED_NOT_FOUND
+	assertExitCode "$OPKG_FEED"' modify missingFeed --uri http://missinghost.com/missingdir' $E_FEED_NOT_FOUND
 
 	assertExitCode "$OPKG_FEED"' modify someFeed' $E_INVALID_ARG
 	assertExitCode "$OPKG_FEED"' modify someFeed --name feedNameWith\"Double\"Quotes\"' $E_INVALID_ARG
-	assertExitCode "$OPKG_FEED"' modify someFeed --uri https://urldefense.com/v3/__http://somehost.com/somedir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgzfoNDzRA$ ' $S_OK
+	assertExitCode "$OPKG_FEED"' modify someFeed --uri http://somehost.com/somedir' $S_OK
 
 	assertExitCode "$OPKG_FEED"' modify someFeed --enabled sometimes' $E_INVALID_ARG
 	assertExitCode "$OPKG_FEED"' modify someFeed --enabled 0' $S_OK
@@ -93,9 +93,9 @@ happyPathTest()
 
 	assertExitCode "$OPKG_FEED"' modify someFeed --name someFeed' $S_OK
 	assertExitCode "$OPKG_FEED"' modify someFeed --name anotherFeed' $S_OK
-	assertExitCode "$OPKG_FEED"' modify someFeed --uri https://urldefense.com/v3/__http://anotherhost.com/anotherdir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgzL7t9Bhw$ ' $E_FEED_NOT_FOUND
+	assertExitCode "$OPKG_FEED"' modify someFeed --uri http://anotherhost.com/anotherdir' $E_FEED_NOT_FOUND
 
-	assertExitCode "$OPKG_FEED"' add someFeed --uri https://urldefense.com/v3/__http://somehost.com/somedir__;!fqWJcnlTkjM!9i4Onh9iVJK9m0kcWmZI6WKisWsX5nNe__ZqOSr7If-Hh6WGsOE9HNr9-6dNcgzfoNDzRA$ ' $S_OK
+	assertExitCode "$OPKG_FEED"' add someFeed --uri http://somehost.com/somedir' $S_OK
 	assertExitCode "$OPKG_FEED"' modify someFeed --name anotherFeed --enabled 0 --trusted 1' $E_FEED_ALREADY_EXISTS
 	assertExitCode "$OPKG_FEED"' modify someFeed --name anotherFeed --enabled 0 --trusted 1 --clobber' $S_OK
 
@@ -125,7 +125,7 @@ dirtyTest()
 		'test \n\s ][][ $' \
 		'test test \n ][][ ' \
 		'test test \n ]\[\s][   %$^#$' \
-		"#^?#\$%()%\\(@\`#\$')file:///what(!_%%5C$#'(~%7B%7D%7D:%5C$'%5C$%5C$%5C$" \
+		"#^?#\$%()%\\(@\`#\$')file:///what(!_%\$#'(~{}}:\$'\$\$\$" \
 	)
 
 	for string in "${testFeedNamesAndUris[@]}" ; do
