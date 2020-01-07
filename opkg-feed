@@ -300,7 +300,7 @@ feedExists()
 	fi
 
 	local feedRegex="$( createFeedLineRegex "$1" )"
-	grep --perl-regexp --only-matching --no-filename "$feedRegex" "${ARGS[confDir]}"/*.conf &>/dev/null
+	grep -Eoh "$feedRegex" "${ARGS[confDir]}"/*.conf &>/dev/null
 	if [[ "$?" == "$IE_GREP_MATCH" ]] ; then
 		return $S_OK
 	fi
@@ -385,7 +385,7 @@ modifyFeed()
 
 	local feedRegex
 	feedRegex=$( createFeedLineRegex "${ARGS[name]}" )
-	local matchingFeed=$( grep --perl-regexp --only-matching --no-filename "$feedRegex" "${ARGS[confDir]}"/*.conf )
+	local matchingFeed=$( grep -Eoh "$feedRegex" "${ARGS[confDir]}"/*.conf )
 	if ! decomposeFeedLine "$matchingFeed" ; then
 		return $E_GENERIC_ERROR
 	fi
@@ -400,7 +400,7 @@ modifyFeed()
 	feedLine=$( escapeRegex "$feedLine" )
 
 	local delim=$( printf '\007' )
-	if ! sed --regexp-extended --in-place "s${delim}$feedRegex${delim}$feedLine${delim}" "${ARGS[confDir]}"/*.conf ; then
+	if ! sed -Ei "s${delim}$feedRegex${delim}$feedLine${delim}" "${ARGS[confDir]}"/*.conf ; then
 		return $E_GENERIC_ERROR
 	fi
 	return $S_OK
@@ -413,7 +413,7 @@ removeFeed()
 	fi
 
 	local feedRegex=$( createFeedLineRegex "$1" )
-	grep --perl-regexp --only-matching --no-filename "$feedRegex" "${ARGS[confDir]}"/*.conf &>/dev/null
+	grep -Eoh "$feedRegex" "${ARGS[confDir]}"/*.conf &>/dev/null
 	local ret=$?
 	if [[ "$ret" == "$IE_GREP_NO_MATCH" ]] ; then
 		return $E_FEED_NOT_FOUND
@@ -422,7 +422,7 @@ removeFeed()
 	fi
 
 	local delim=$( printf '\007' )
-	if ! sed --regexp-extended --in-place "\\${delim}$feedRegex${delim}d" "${ARGS[confDir]}"/*.conf ; then
+	if ! sed -Ei "\\${delim}$feedRegex${delim}d" "${ARGS[confDir]}"/*.conf ; then
 		return $E_GENERIC_ERROR
 	fi
 	find "${ARGS[confDir]}" -size 0c -exec rm -f {} +
