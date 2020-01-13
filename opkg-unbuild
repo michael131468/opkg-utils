@@ -1,27 +1,80 @@
-#!/usr/bin/env python3
+#!/bin/sh -e
+# opkg-unbuild PKG... - extract packages to the current directory
+
 # SPDX-License-Identifier: GPL-2.0-only
-from __future__ import absolute_import
-from __future__ import print_function
+# Author: Christian Hermann <mail@hermannch.dev>
 
-import sys, os, re
+fail() { printf -- 'FAIL: %s\n' "$1" >&2 ; exit "${2:-1}" ; }
+usage() {
+	printf '%s\n' "Usage: $(basename "$0") PKG..."
+	printf '%s\n' "    Extract debian compatible packages to the current directory"
+}
 
-if (len(sys.argv) == 0):
-    print('usage: %s: package.opk' % sys.argv[0])
-    sys.exit(1)
+# map file suffix to tar compression flag
+get_tar_comp_flag() {
+	case "$1" in
+		# avoid -a, which has a different meaning in busybox-tar
+		*tar.gz|*tgz) printf -- '-z' ;;
+		*tar.xz|*txz) printf -- '-J' ;;
+		*tar.bz2|*tbz|*tbz2) printf -- '-j' ;;
+		*tar.lzma|*tlz) printf -- '--auto-compress' ;;
+		*) printf -- '--auto-compress' ;;
+	esac
+}
 
-for filename in sys.argv[1:]:
-    m = re.match('((.*/)*)(.*)', filename)
-    pkg = m.group(3)
-    m = re.match('(.*)((.opk)|(.deb)|(.ipk))', filename)
-    if m:
-        pkg = m.group(1)
 
-    os.system('rm -fr %s' % pkg)
-    os.mkdir(pkg)
-    os.mkdir(pkg + '/CONTROL')
+if [ "$#" -lt 1 ] ; then
+	usage >&2
+	exit 1
+fi
+if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
+	usage
+	exit 0
+fi
 
-    os.system('cd %s; (ar x ../%s || tar zxf ../%s) >& /dev/null' % (pkg, filename, filename))
+while [ -n "$1" ] ; do
+	filename="$1"
+	shift
 
-    os.system('tar xzf %s/data.tar.gz -C %s' % (pkg, pkg))
-    os.system('tar xzf %s/control.tar.gz -C %s/CONTROL' % (pkg, pkg))
-    os.system('rm -f %s/control.tar.gz %s/data.tar.gz %s/debian-binary' % (pkg, pkg, pkg))
+	[ ! -r "$filename" ] && fail "Cannot read file: $filename"
+
+	# Prepare directory name (strip suffix)
+	pkgname="$(basename "$filename")"
+	pkgdir="./$(printf '%s' "$pkgname" | sed -E 's/\.((ipk)|(opk)|(deb))//')/"
+
+	# Skip this package if there's a naming clash with the target dir
+	if [ -d "$pkgdir" ]; then
+		printf '%s\n' "Destination already exists: $pkgdir (skipping)" >&2
+		continue
+	fi
+
+	# Analyze outer layer, prefer ar over tar
+	outer_ext_cmd=
+	table=
+	if ar t "$filename" >/dev/null 2>&1 ; then
+		outer_ext_cmd="ar p "
+		table="$(ar t "$filename" 2>/dev/null)"
+	elif tar t -f "$filename" >/dev/null 2>&1 ; then
+		outer_ext_cmd="tar -x --to-stdout --file "
+		table="$(tar -t -f "$filename")"
+	fi
+	[ -z "$table" ] && fail "Could not read file table: $filename"
+
+	# Analyze inner layer.  Choose decompression algo for inner archives as
+	# indicated by their suffix.  Query the real paths from the outer archive's
+	# table, since tar's table prefixes them with ./ while ar's does not.
+	control_path="$(printf '%s' "$table" | grep control)"
+	data_path="$(printf '%s' "$table" | grep data)"
+	[ -z "$control_path" ] && fail "Archive has no control.tar.gz: $filename"
+	[ -z "$data_path" ] && fail "Archive has no data.tar.gz: $filename"
+	inner_comp_control="$(get_tar_comp_flag "$control_path")"
+	inner_comp_data="$(get_tar_comp_flag "$data_path")"
+
+	# Extract
+	mkdir -p "$pkgdir/CONTROL"
+	$outer_ext_cmd "$filename" "$control_path" | tar --extract -f - "$inner_comp_control" -C "$pkgdir/CONTROL"
+	$outer_ext_cmd "$filename" "$data_path" | tar --extract -f - "$inner_comp_data" -C "$pkgdir/"
+
+	# Summary
+	printf 'Unbuilt %s into %s\n' "$filename" "$pkgdir"
+done
