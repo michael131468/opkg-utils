@@ -1,6 +1,17 @@
-UTILS = opkg-build opkg-unbuild opkg-make-index opkg.py opkg-list-fields \
-	arfile.py opkg-buildpackage opkg-diff opkg-extract-file opkg-show-deps \
-	opkg-compare-indexes update-alternatives
+UTILS = \
+	arfile.py \
+	opkg-build \
+	opkg-buildpackage \
+	opkg-compare-indexes \
+	opkg-diff \
+	opkg-extract-file \
+	opkg-feed \
+	opkg-list-fields \
+	opkg-make-index \
+	opkg-show-deps \
+	opkg-unbuild \
+	opkg.py \
+	update-alternatives
 
 MANPAGES = opkg-build.1
 
