@@ -48,6 +48,20 @@ import tarfile
 import textwrap
 import collections
 
+
+def order(x):
+    if not x:
+        return 0
+    if x == "~":
+        return -1
+    if str.isdigit(x):
+        return 0
+    if str.isalpha(x):
+        return ord(x)
+
+    return 256 + ord(x)
+
+
 class Version(object):
     """A class for holding parsed package version information."""
     def __init__(self, epoch, version):
@@ -55,39 +69,53 @@ class Version(object):
         self.version = version
 
     def _versioncompare(self, selfversion, refversion):
+        """
+                Implementation below is a copy of the opkg version comparison algorithm
+                http://git.yoctoproject.org/cgit/cgit.cgi/opkg/tree/libopkg/pkg.c*n933
+                it alternates between number and non number comparisons until a difference is found
+                digits are compared by value. other characters are sorted lexically using the above method orderOfChar
+
+                One slight modification, the original version can return any value, whereas this one is limited to -1, 0, +1
+                """
         if not selfversion: selfversion = ""
         if not refversion: refversion = ""
-        while 1:
-            ## first look for non-numeric version component
-            selfm = re.match('([^0-9]*)(.*)', selfversion)
-            #print(('selfm', selfm.groups()))
-            (selfalpha, selfversion) = selfm.groups()
-            refm = re.match('([^0-9]*)(.*)', refversion)
-            #print(('refm', refm.groups())
-            (refalpha, refversion) = refm.groups()
-            if (selfalpha > refalpha):
+
+        value = list(selfversion)
+        ref = list(refversion)
+
+        while value or ref:
+            first_diff = 0
+            # alphanumeric comparison
+            while (value and not str.isdigit(value[0])) or (ref and not str.isdigit(ref[0])):
+                vc = order(value.pop(0) if value else None)
+                rc = order(ref.pop(0) if ref else None)
+                if vc != rc:
+                    return -1 if vc < rc else 1
+
+            # comparing numbers
+            # start by skipping 0
+            while value and value[0] == "0":
+                value.pop(0)
+            while ref and ref[0] == "0":
+                ref.pop(0)
+
+            # actual number comparison
+            while value and str.isdigit(value[0]) and ref and str.isdigit(ref[0]):
+                if not first_diff:
+                    first_diff = int(value.pop(0)) - int(ref.pop(0))
+                else:
+                    value.pop(0)
+                    ref.pop(0)
+
+            # the one that has a value remaining was the highest number
+            if value and str.isdigit(value[0]):
                 return 1
-            elif (selfalpha < refalpha):
+            if ref and str.isdigit(ref[0]):
                 return -1
-            ## now look for numeric version component
-            (selfnum, selfversion) = re.match('([0-9]*)(.*)', selfversion).groups()
-            (refnum, refversion) = re.match('([0-9]*)(.*)', refversion).groups()
-            #print(('selfnum', selfnum, selfversion)
-            #print(('refnum', refnum, refversion)
-            if (selfnum != ''):
-                selfnum = int(selfnum)
-            else:
-                selfnum = -1
-            if (refnum != ''):
-                refnum = int(refnum)
-            else:
-                refnum = -1
-            if (selfnum > refnum):
-                return 1
-            elif (selfnum < refnum):
-                return -1
-            if selfversion == '' and refversion == '':
-                return 0
+            # in case of equal length numbers look at the first diff
+            if first_diff:
+                return 1 if first_diff > 0 else -1
+        return 0
 
     def compare(self, ref):
         if (self.epoch > ref.epoch):
@@ -592,6 +620,7 @@ if __name__ == "__main__":
     assert Version(0, "1.2.2+cvs20070308").compare(Version(0, "1.2.2-r0")) == 1
     assert Version(0, "1.2.2-r0").compare(Version(0, "1.2.2-r0")) == 0
     assert Version(0, "1.2.2-r5").compare(Version(0, "1.2.2-r0")) == 1
+    assert Version(0, "1.1.2~r1").compare(Version(0, "1.1.2")) == -1
 
     package = Package()
 
