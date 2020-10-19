@@ -12,8 +12,14 @@ import os
 import posixpath
 import re
 import subprocess
+import multiprocessing
 
 import opkg
+
+from functools import partial
+
+def produce_pkg_print(pkg, checksum):
+    return (pkg.package, pkg.print(checksum))
 
 def to_morgue(filename, pkg_dir, verbose):
     """ Move files to morgue folder """
@@ -48,6 +54,7 @@ def main():
     parser.add_argument('-m', dest='opt_m', action="store_true", help='Archive old packages')
     parser.add_argument('-a', dest='opt_a', action='store_true', help='Add version information')
     parser.add_argument('-f', dest='opt_f', action='store_true', help='Include user-defined fields')
+    parser.add_argument('-t', dest='threads', default=1, type=int, help='Number of threads for processing')
     parser.add_argument('-l', dest='filelist_filename', default=None, help='Packages filelist name')
     parser.add_argument('-p', dest='packages_filename', default=None, help='Package index filename')
     parser.add_argument('-r', dest='old_filename', help='Old Package index filename')
@@ -67,6 +74,7 @@ def main():
     locales_dir = args.locales_dir
     opt_a = args.opt_a
     opt_f = args.opt_f
+    threads = args.threads
     checksum = args.checksum if args.checksum else ['md5']
     pkg_dir = args.packagesdir
 
@@ -171,6 +179,7 @@ def main():
     if packages_filename:
         tmp_packages_filename = ("%s.%d" % (packages_filename, os.getpid()))
         pkgs_file = open(tmp_packages_filename, "w")
+    pool_jobs = []
     names = list(packages.packages.keys())
     names.sort()
     for name in names:
@@ -189,18 +198,35 @@ def main():
                 if locale:
                     to_locale(pkg.filename, locale, pkg_dir, locales_dir, verbose)
                     continue
-            if verbose:
-                sys.stderr.write("Writing info for package %s\n" % (pkg.package,))
-            if packages_filename:
-                pkgs_file.write(pkg.print(checksum))
+            if threads > 1:
+                pool_jobs.append(pkg)
             else:
-                print(pkg.print(checksum))
+                if verbose:
+                    sys.stderr.write("Writing info for package %s\n" % (pkg.package,))
+                if packages_filename:
+                    pkgs_file.write(pkg.print(checksum))
+                else:
+                    print(pkg.print(checksum))
         except OSError as ex:
             sys.stderr.write("Package %s disappeared on us!\n(%s)\n" % (name, ex))
             continue
         except IOError as ex:
             sys.stderr.write("Package %s disappeared on us!\n(%s)\n" % (name, ex))
             continue
+
+    if pool_jobs:
+        pool = multiprocessing.Pool(threads)
+        pool_output = pool.map(partial(produce_pkg_print, checksum=checksum), pool_jobs)
+        for name in names:
+            pkg = packages.packages[name]
+            for output in pool_output:
+                if output[0] == pkg.package:
+                    if verbose:
+                        sys.stderr.write("Writing info for package %s\n" % (pkg.package,))
+                    if packages_filename:
+                        pkgs_file.write(output[1])
+                    else:
+                        print(output[1])
 
     if packages_filename:
         pkgs_file.close()
